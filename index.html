@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Göbek - Clinical Nutrition Engine Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        warmbg: '#fcfbfaf0',
+                        warmcard: '#ffffff',
+                        stoneborder: '#e7e5e4',
+                        brand: { 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 900: '#134e4a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            max-width: 250px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 250px;
+        }
+        .nav-item.active {
+            background-color: #f3f4f6;
+            border-left: 4px solid #0d9488;
+            color: #0d9488;
+            font-weight: 600;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        body { background-color: #fafaf9; color: #292524; }
+    </style>
+
+    <!-- Chosen Palette: Warm Neutrals (Stone/Zinc) for base layout, ensuring a calm, clinical feel. Accents of Teal (Brand/Trust), Rose (Danger/Red Risk), Amber (Warning/Yellow Risk), and Emerald (Safe/Green Risk) to match the traffic-light system in the report. -->
+    <!-- Application Structure Plan: Designed as a progressive interactive "System Dashboard". Instead of reading a static document, the user explores the 5 layers of the Göbek engine's workflow by clicking through a sequential sidebar navigation. This structure was chosen because the report describes a linear data pipeline (Input -> Context -> Risk -> Output -> Human Review). Simulating this pipeline makes the abstract AI logic concrete and highly explorable. -->
+    <!-- Visualization & Content Choices: 
+        1. Biomarkers (Input Layer) -> Goal: Compare -> Visualization: Grouped Bar Chart (Chart.js) -> Interaction: Hover tooltips -> Justification: Clearly shows patient levels vs. normal thresholds. 
+        2. Context Engine -> Goal: Organize/Inform -> Visualization: Interactive HTML logic cards -> Interaction: Visualizing the "VS" conflict and step-by-step resolution -> Justification: Best for showing rule-based logical hierarchies (Pathology > Lifestyle).
+        3. Risk Engine -> Goal: Categorize -> Visualization: 3-column Kanban/Grid (HTML/CSS) -> Justification: Directly mirrors the report's Red/Yellow/Green filtering matrix.
+        4. Output/Confidence -> Goal: Inform -> Visualization: Doughnut Chart (Chart.js) -> Justification: Excellent for representing a 0-100% confidence score visually.
+        Method confirmation: Canvas used for charts. HTML/Tailwind for diagrams. NO SVG or Mermaid JS used.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased overflow-x-hidden">
+
+    <header class="bg-white border-b border-stoneborder sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🧬</span>
+                <h1 class="text-xl font-bold tracking-tight text-stone-800">Göbek <span class="text-stone-400 font-medium">| Contextual Clinical Nutrition</span></h1>
+            </div>
+            <div class="hidden sm:flex items-center gap-3 text-sm">
+                <span class="flex h-3 w-3 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-500 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-600"></span>
+                </span>
+                <span class="font-medium text-stone-600">Engine Active</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row">
+        
+        <nav class="md:w-64 flex-shrink-0 border-r border-stoneborder bg-warmbg md:min-h-[calc(100vh-4rem)] p-4 md:p-6 overflow-x-auto md:overflow-y-auto hidden-scrollbar">
+            <div class="flex md:flex-col gap-2 min-w-[max-content] md:min-w-0 pb-4 md:pb-0">
+                <p class="text-xs font-bold tracking-wider text-stone-400 uppercase mb-2 hidden md:block">System Workflow</p>
+                <button onclick="app.navigateTo('layer1')" id="nav-layer1" class="nav-item active text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>1.</span> Input Layer</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Multimodal Data Ingestion</div>
+                </button>
+                <button onclick="app.navigateTo('layer2')" id="nav-layer2" class="nav-item text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100 text-stone-600">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>2.</span> Context Engine</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Conflict Detection</div>
+                </button>
+                <button onclick="app.navigateTo('layer3')" id="nav-layer3" class="nav-item text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100 text-stone-600">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>3.</span> Risk Engine</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Risk-Aware Filtering</div>
+                </button>
+                <button onclick="app.navigateTo('layer4')" id="nav-layer4" class="nav-item text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100 text-stone-600">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>4.</span> Output Layer</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Condition-Aware Generation</div>
+                </button>
+                <button onclick="app.navigateTo('layer5')" id="nav-layer5" class="nav-item text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100 text-stone-600">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>5.</span> HITL Review</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Human-in-the-Loop</div>
+                </button>
+                <button onclick="app.navigateTo('layer6')" id="nav-layer6" class="nav-item text-left px-4 py-3 rounded-lg text-sm transition-colors border-l-4 border-transparent hover:bg-stone-100 text-stone-600">
+                    <div class="font-bold mb-1 flex items-center gap-2"><span>6.</span> Clinical Network</div>
+                    <div class="text-xs text-stone-500 hidden md:block">Safety Infrastructure</div>
+                </button>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-4 md:p-8 bg-warmbg relative">
+            
+            <section id="layer1" class="workflow-section fade-in block">
+                <div class="max-w-4xl">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-2">📥 Layer 1: Multimodal Ingestion</h2>
+                        <p class="text-lg text-stone-600">This initial phase compiles the patient's raw data into a unified user profile vector. It serves as the foundational data source for all subsequent AI processing, capturing pathologies, goals, and physiological baselines.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="space-y-6">
+                            <div class="bg-warmcard p-5 rounded-xl border border-stoneborder shadow-sm">
+                                <h3 class="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">Clinical Profile & Goals</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <p class="text-xs text-stone-500 mb-1">Medical Conditions</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="px-2.5 py-1 bg-rose-100 text-rose-800 text-sm rounded-md font-medium border border-rose-200">Crohn’s Disease (Active Flare)</span>
+                                            <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-sm rounded-md font-medium border border-amber-200">Hypertension</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-stone-500 mb-1">Dietary Goals</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="px-2.5 py-1 bg-blue-50 text-blue-700 text-sm rounded-md border border-blue-100">Weight Loss</span>
+                                            <span class="px-2.5 py-1 bg-blue-50 text-blue-700 text-sm rounded-md border border-blue-100">Inflammation Control</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-stone-500 mb-1">Macro Preferences</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span class="px-2.5 py-1 bg-stone-100 text-stone-700 text-sm rounded-md">High Protein</span>
+                                            <span class="px-2.5 py-1 bg-stone-100 text-stone-700 text-sm rounded-md">Moderate Carb</span>
+                                            <span class="px-2.5 py-1 bg-stone-100 text-stone-700 text-sm rounded-md">Low Fat</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-warmcard p-5 rounded-xl border border-stoneborder shadow-sm">
+                                <h3 class="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">Constraints & Inventory</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-3 p-3 bg-rose-50 rounded-lg">
+                                        <span class="text-xl">🚫</span>
+                                        <div>
+                                            <p class="text-sm font-bold text-rose-900">Allergies / Intolerances</p>
+                                            <p class="text-sm text-rose-700">Tree nuts, Lactose</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-stone-50 rounded-lg border border-stone-100">
+                                        <span class="text-xl">🛒</span>
+                                        <div>
+                                            <p class="text-sm font-bold text-stone-800">Available Ingredients</p>
+                                            <p class="text-sm text-stone-600">Chicken breast, white rice, bone broth, carrots, spinach, olive oil, turmeric, ginger.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-warmcard p-5 rounded-xl border border-stoneborder shadow-sm flex flex-col">
+                            <h3 class="text-sm font-bold text-stone-400 uppercase tracking-wider mb-2">Biomarkers (Parsed via OCR)</h3>
+                            <p class="text-xs text-stone-500 mb-6">Comparing patient labs against normal clinical thresholds.</p>
+                            <div class="flex-1 w-full flex items-center justify-center">
+                                <div class="chart-container">
+                                    <canvas id="biomarkerChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="mt-4 p-3 bg-stone-50 rounded text-sm text-stone-700 border border-stone-100">
+                                <strong>System Note:</strong> High hs-CRP indicates systemic inflammation. Vitamin D is notably low. Activity level registered as 'Sedentary' due to flare.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="layer2" class="workflow-section hidden">
+                <div class="max-w-4xl">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-2">🧠 Layer 2: Context Engine</h2>
+                        <p class="text-lg text-stone-600">This engine translates the raw inputs into specific parameter constraints (`min`, `max`, `avoid`, `prioritize`). More importantly, it cross-references these rules to detect and resolve medical contradictions using a strict hierarchical protocol.</p>
+                    </div>
+
+                    <div class="mb-8 bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+                        <h3 class="font-bold text-indigo-900 mb-3 flex items-center gap-2"><span class="text-xl">⚙️</span> Constraint Parsing Example</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-3 rounded shadow-sm border border-indigo-50">
+                                <span class="text-xs font-bold text-stone-500 uppercase">Input: Hypertension</span>
+                                <p class="font-mono text-sm text-indigo-700 mt-1">max_sodium: 1500mg/day</p>
+                                <p class="font-mono text-sm text-indigo-700">prioritize: potassium</p>
+                            </div>
+                            <div class="bg-white p-3 rounded shadow-sm border border-indigo-50">
+                                <span class="text-xs font-bold text-stone-500 uppercase">Input: Inflammation</span>
+                                <p class="font-mono text-sm text-indigo-700 mt-1">prioritize: omega-3, curcumin</p>
+                                <p class="font-mono text-sm text-indigo-700">prioritize: antioxidants</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-stone-800 mb-4 flex items-center gap-2"><span>🚨</span> Conflict Detection & Resolution</h3>
+                    
+                    <div class="bg-warmcard rounded-xl border border-stoneborder shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-stoneborder bg-stone-50">
+                            <p class="text-sm font-bold text-stone-600">Medical Priority Hierarchy:</p>
+                            <p class="text-lg font-bold mt-1 text-stone-800">Pathology <span class="text-brand-500">></span> Symptom <span class="text-brand-500">></span> Lifestyle Goal</p>
+                        </div>
+                        
+                        <div class="p-5 md:p-8 flex flex-col md:flex-row items-center gap-6">
+                            
+                            <div class="flex-1 w-full bg-rose-50 border border-rose-200 rounded-lg p-4 relative">
+                                <div class="absolute -top-3 left-4 bg-rose-200 text-rose-800 text-xs font-bold px-2 py-1 rounded">Constraint A</div>
+                                <h4 class="font-bold text-rose-900 mt-2">Weight Loss</h4>
+                                <p class="text-sm text-rose-800 mt-2">Requires high fiber (>10g/meal) for satiety and caloric displacement.</p>
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center flex-shrink-0">
+                                <span class="text-2xl font-bold text-rose-400 mb-1">VS</span>
+                                <div class="w-px h-8 bg-rose-300 md:hidden"></div>
+                                <div class="h-px w-8 bg-rose-300 hidden md:block"></div>
+                            </div>
+
+                            <div class="flex-1 w-full bg-rose-50 border border-rose-200 rounded-lg p-4 relative">
+                                <div class="absolute -top-3 left-4 bg-rose-200 text-rose-800 text-xs font-bold px-2 py-1 rounded">Constraint B</div>
+                                <h4 class="font-bold text-rose-900 mt-2">Crohn’s Flare</h4>
+                                <p class="text-sm text-rose-800 mt-2">Requires low residue/fiber (<3g/meal) to prevent obstruction/irritation.</p>
+                            </div>
+
+                        </div>
+
+                        <div class="bg-brand-50 p-6 border-t border-brand-100">
+                            <h4 class="font-bold text-brand-900 mb-4 flex items-center gap-2"><span class="text-xl">✅</span> Resolution Protocol Applied</h4>
+                            <div class="space-y-4">
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-brand-200 text-brand-800 flex items-center justify-center font-bold flex-shrink-0">1</div>
+                                    <div>
+                                        <p class="font-bold text-brand-900">Rule Enforced</p>
+                                        <p class="text-sm text-brand-800">Acute gastrointestinal pathology supersedes metabolic lifestyle goals.</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-brand-200 text-brand-800 flex items-center justify-center font-bold flex-shrink-0">2</div>
+                                    <div>
+                                        <p class="font-bold text-brand-900">Direct Action</p>
+                                        <p class="text-sm text-brand-800">Override Weight Loss fiber recommendation. <strong>Cap fiber at 3g/meal.</strong></p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-brand-200 text-brand-800 flex items-center justify-center font-bold flex-shrink-0">3</div>
+                                    <div>
+                                        <p class="font-bold text-brand-900">Compensatory Strategy</p>
+                                        <p class="text-sm text-brand-800">Shift satiety mechanisms from fiber to highly bioavailable lean proteins and controlled MCTs, maintaining caloric deficit without gut stress.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ethical Override Explanation Layer -->
+                            <div class="mt-6 bg-stone-900 p-4 rounded-lg border border-stone-800 shadow-inner">
+                                <div class="flex items-center gap-2 mb-2 pb-2 border-b border-stone-700">
+                                    <span class="text-lg">⚖️</span>
+                                    <p class="text-xs font-bold text-stone-400 uppercase tracking-widest">Ethical Override Explanation Layer</p>
+                                </div>
+                                <div class="font-mono text-sm mt-3">
+                                    <span class="text-brand-400 font-bold">> Override Justification:</span>
+                                    <p class="text-stone-300 mt-2 pl-4 border-l-2 border-stone-600 leading-relaxed">Acute pathology takes precedence over metabolic optimization to prevent physical harm.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="layer3" class="workflow-section hidden">
+                <div class="max-w-5xl">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-2">🛡️ Layer 3: Risk Engine</h2>
+                        <p class="text-lg text-stone-600">Before attempting generation, the Risk Engine analyzes the parsed parameters and applies a traffic-light filtering matrix to the user's available ingredient inventory, ensuring medical safety.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <div class="bg-white border-2 border-rose-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                            <div class="bg-rose-500 p-4 text-white">
+                                <h3 class="font-bold text-lg flex items-center gap-2"><span>🔴</span> RED / Unsafe</h3>
+                                <p class="text-sm text-rose-100 mt-1">Absolute Removal</p>
+                            </div>
+                            <div class="p-5 flex-1 space-y-4">
+                                <div class="border-b border-rose-100 pb-3">
+                                    <p class="font-bold text-stone-800">Tree nuts, Dairy</p>
+                                    <p class="text-sm text-stone-600 mt-1">Removed due to user allergies/intolerances.</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-stone-800">Raw Spinach</p>
+                                    <p class="text-sm text-stone-600 mt-1">High insoluble fiber. Contraindicated for active Crohn's flare based on Context Engine rules.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border-2 border-amber-300 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                            <div class="bg-amber-400 p-4 text-amber-900">
+                                <h3 class="font-bold text-lg flex items-center gap-2"><span>🟡</span> YELLOW / Borderline</h3>
+                                <p class="text-sm text-amber-800 mt-1">Flagged for Dose Control</p>
+                            </div>
+                            <div class="p-5 flex-1 space-y-4">
+                                <div class="border-b border-amber-100 pb-3">
+                                    <p class="font-bold text-stone-800">Olive Oil</p>
+                                    <p class="text-sm text-stone-600 mt-1">Safe, but must be strictly quantified to maintain the "Weight Loss" caloric deficit constraint.</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-stone-800">Carrots</p>
+                                    <p class="text-sm text-stone-600 mt-1">Must be thoroughly cooked/pureed to reduce mechanical load on the gut. Cannot be served raw.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border-2 border-emerald-300 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                            <div class="bg-emerald-500 p-4 text-white">
+                                <h3 class="font-bold text-lg flex items-center gap-2"><span>🟢</span> GREEN / Therapeutic</h3>
+                                <p class="text-sm text-emerald-100 mt-1">Prioritize in Generation</p>
+                            </div>
+                            <div class="p-5 flex-1 space-y-4">
+                                <div class="border-b border-emerald-100 pb-3">
+                                    <p class="font-bold text-stone-800">Turmeric & Ginger</p>
+                                    <p class="text-sm text-stone-600 mt-1">Directly targets high hs-CRP biomarker (inflammation control).</p>
+                                </div>
+                                <div class="border-b border-emerald-100 pb-3">
+                                    <p class="font-bold text-stone-800">Bone Broth</p>
+                                    <p class="text-sm text-stone-600 mt-1">Provides gut-soothing amino acids (glutamine) and hydration.</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-stone-800">Chicken Breast</p>
+                                    <p class="text-sm text-stone-600 mt-1">High-quality, easily digestible lean protein for weight management satiety.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <section id="layer4" class="workflow-section hidden">
+                <div class="max-w-5xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+                        <div>
+                            <h2 class="text-3xl font-bold text-stone-900 mb-2">🍽️ Layer 4: Output Layer</h2>
+                            <p class="text-lg text-stone-600">The LLM generation model is constrained by the Risk Engine bounds to output a hyper-personalized, condition-aware recipe, complete with a systemic confidence score.</p>
+                        </div>
+                        <button id="btn-generate-recipe" class="flex-shrink-0 bg-stone-900 hover:bg-stone-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 shadow-md">
+                            <span>✨</span> Generate Alternative Protocol
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col lg:flex-row gap-6 relative">
+                        <!-- Loading Overlay -->
+                        <div id="recipe-loading" class="hidden absolute inset-0 z-10 bg-warmbg/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center border border-stone-200">
+                            <span class="flex h-10 w-10 relative mb-4">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-10 w-10 bg-brand-500 text-white flex items-center justify-center text-xl">✨</span>
+                            </span>
+                            <p class="text-stone-800 font-bold">Gemini is analyzing constraints...</p>
+                            <p class="text-sm text-stone-500 mt-1">Generating safe protocol</p>
+                        </div>
+
+                        <div class="flex-1 bg-warmcard rounded-xl border border-stoneborder shadow-sm overflow-hidden flex flex-col">
+                            <div class="bg-stone-800 p-6 text-white">
+                                <p class="text-brand-400 font-bold text-xs uppercase tracking-widest mb-2" id="recipe-label">Generated Protocol • Recipe 1</p>
+                                <h3 class="text-2xl font-bold" id="recipe-title">Golden Gut-Soothing Chicken Congee</h3>
+                                <p class="text-stone-300 italic text-sm mt-2" id="recipe-desc">A low-residue, anti-inflammatory porridge designed for high satiety without mechanical gut stress.</p>
+                            </div>
+                            
+                            <div class="p-6 flex-1 flex flex-col gap-6">
+                                <div>
+                                    <h4 class="font-bold text-stone-900 border-b border-stone-200 pb-2 mb-3 text-sm uppercase">Why it is suitable</h4>
+                                    <p class="text-sm text-stone-700 leading-relaxed" id="recipe-suitability">Uses thoroughly broken-down white rice and bone broth to provide highly digestible energy, while lean poached chicken provides protein for weight management satiety without the need for fibrous vegetables.</p>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="bg-stone-50 p-4 rounded-lg">
+                                        <h4 class="font-bold text-stone-900 text-sm mb-2">Conditions Addressed</h4>
+                                        <ul class="text-sm space-y-2 text-stone-700 list-disc pl-4" id="recipe-conditions">
+                                            <li><span class="font-bold">Crohn's Flare:</span> Low fiber, soft texture.</li>
+                                            <li><span class="font-bold">High hs-CRP:</span> Curcumin & gingerols.</li>
+                                            <li><span class="font-bold">Weight Loss:</span> High protein-to-calorie ratio, high water volume.</li>
+                                        </ul>
+                                    </div>
+                                    <div class="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                        <h4 class="font-bold text-amber-900 text-sm mb-2">Risk Notes</h4>
+                                        <ul class="text-sm space-y-2 text-amber-800 list-disc pl-4" id="recipe-risks">
+                                            <li><strong>Carrots:</strong> Must be boiled until completely soft/mashed. NO RAW.</li>
+                                            <li><strong>Sodium:</strong> Ensure store-bought bone broth is strictly "Unsalted" (1500mg limit).</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="mt-auto bg-brand-50 border border-brand-100 p-4 rounded-lg text-sm text-brand-900" id="recipe-alt">
+                                    <strong>Safer Alternative:</strong> If even cooked carrots cause GI distress, swap with 1 scoop of unflavored collagen peptides for additional gut-healing protein with zero fiber.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="w-full lg:w-[22rem] bg-warmcard rounded-xl border border-stoneborder shadow-sm p-6 flex flex-col items-center">
+                            <h3 class="text-lg font-bold text-stone-800 text-center mb-6">System Analytics</h3>
+                            
+                            <div class="grid grid-cols-2 gap-4 w-full mb-6">
+                                <!-- Confidence Gauge -->
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="relative w-24 h-24 sm:w-28 sm:h-28 mb-3">
+                                        <canvas id="confidenceChart"></canvas>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center font-bold text-xl sm:text-2xl text-emerald-600" id="conf-val">
+                                            94%
+                                        </div>
+                                    </div>
+                                    <p class="text-xs font-bold text-stone-700 text-center uppercase tracking-wide">Clinical<br>Confidence</p>
+                                </div>
+
+                                <!-- Completeness Gauge -->
+                                <div class="flex flex-col items-center justify-center">
+                                    <div class="relative w-24 h-24 sm:w-28 sm:h-28 mb-3">
+                                        <canvas id="completenessChart"></canvas>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center font-bold text-xl sm:text-2xl text-amber-500">
+                                            72%
+                                        </div>
+                                    </div>
+                                    <p class="text-xs font-bold text-stone-700 text-center uppercase tracking-wide">Data<br>Completeness</p>
+                                </div>
+                            </div>
+
+                            <div class="w-full bg-amber-50 p-3 rounded-lg border border-amber-100 mb-4 text-sm shadow-sm">
+                                <p class="font-bold text-amber-900 mb-1 flex items-center gap-1"><span>⚠️</span> Missing Inputs</p>
+                                <p class="text-amber-800 text-xs">Recent Ferritin, B12, Current Medication List</p>
+                            </div>
+
+                            <div class="w-full bg-stone-50 p-4 rounded-lg border border-stone-200 mb-4 text-sm shadow-sm">
+                                <p class="font-bold text-stone-800 mb-2 flex items-center gap-2"><span>🛡️</span> AI Transparency & Safety</p>
+                                <p class="text-stone-600 text-xs leading-relaxed">Tracking data completeness prevents the AI from becoming overconfident based on partial profiles. It signals to the reviewing Dietitian that while the generated protocol is strictly safe for <em>known</em> variables, unmapped clinical contraindications may still exist.</p>
+                            </div>
+                            
+                            <div class="w-full mt-auto bg-white p-3 rounded border border-stone-200 text-sm flex justify-between items-center shadow-sm">
+                                <span class="text-stone-600 font-medium text-xs">Routing Status:</span>
+                                <span class="px-2 py-1 bg-brand-100 text-brand-800 rounded text-xs font-bold border border-brand-200">Safe Profile Draft</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <section id="layer5" class="workflow-section hidden">
+                <div class="max-w-4xl">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-2">👩‍⚕️ Layer 5: HITL Interface</h2>
+                        <p class="text-lg text-stone-600">Göbek ensures patient safety via a Human-in-the-Loop (HITL) layer. Algorithms triage recipes, routing them to a clinical dashboard for final dietitian verification and cryptographic locking.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-stoneborder flex items-start gap-4">
+                            <div class="text-2xl mt-1">🤖</div>
+                            <div>
+                                <h4 class="font-bold text-stone-900">Algorithmic Triage</h4>
+                                <p class="text-sm text-stone-600 mt-1">Recipes scoring >90% (like our Congee) proceed as "Safe Drafts". Scores <90% or complex overlapping pathologies are quarantined.</p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-stoneborder flex items-start gap-4">
+                            <div class="text-2xl mt-1">🔒</div>
+                            <div>
+                                <h4 class="font-bold text-stone-900">Cryptographic Locking</h4>
+                                <p class="text-sm text-stone-600 mt-1">Once verified by the RD, parameters are locked to prevent unauthorized alterations before reaching the user app.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Dashboard UI Simulation -->
+                    <div class="bg-stone-900 rounded-xl overflow-hidden shadow-xl border border-stone-800">
+                        <div class="bg-stone-800 p-3 px-5 flex items-center justify-between border-b border-stone-700">
+                            <div class="text-xs font-bold text-stone-400 tracking-wider">DIETITIAN DASHBOARD (SIMULATION)</div>
+                            <div class="text-xs text-stone-400">User: RD_Clinician_01</div>
+                        </div>
+                        <div class="p-6 md:p-8 bg-stone-50">
+                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                <div>
+                                    <h3 class="text-xl font-bold text-stone-800">Pending Review: Recipe #8842</h3>
+                                    <p class="text-sm text-stone-500 mt-1">Patient Profile: Crohn's + Hypertension</p>
+                                </div>
+                                <div id="statusBadge" class="px-3 py-1.5 bg-brand-100 text-brand-800 rounded font-bold text-sm border border-brand-200 transition-all duration-300">
+                                    🤖 AI Draft - Safe Profile
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div class="bg-white p-4 rounded border border-stone-200">
+                                    <p class="text-xs font-bold text-stone-400 uppercase mb-2">Engine Logs</p>
+                                    <ul class="text-sm font-mono text-stone-700 space-y-2">
+                                        <li>> Conflict: Weight Loss vs Crohn's</li>
+                                        <li>> Resolution: Fiber capped at 3g.</li>
+                                        <li>> Risk Alert: Carrots (requires cooking).</li>
+                                        <li>> Confidence: 94%</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-stone-700 mb-2">RD Clinical Notes (Optional)</label>
+                                    <textarea id="clinicianNotes" class="w-full h-24 p-3 rounded border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none transition-colors" placeholder="Add specific patient notes here..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Gemini Email Drafter -->
+                            <div class="mb-6 bg-brand-50 p-4 rounded-lg border border-brand-100 hidden" id="email-draft-container">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-lg">✨</span>
+                                    <h4 class="font-bold text-brand-900">AI Patient Communication Draft</h4>
+                                </div>
+                                <div id="email-draft-content" class="text-sm text-brand-800 whitespace-pre-wrap bg-white p-4 rounded border border-brand-200 shadow-inner"></div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-between items-center border-t border-stone-200 pt-6 gap-4">
+                                <button id="btn-draft-email" class="text-stone-600 hover:text-brand-600 font-bold px-4 py-2 rounded transition-colors flex items-center gap-2 text-sm">
+                                    <span>✨</span> Draft Patient Email
+                                </button>
+                                <button id="approveBtn" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-lg font-bold shadow transition-all active:scale-95 flex items-center gap-2 w-full sm:w-auto justify-center">
+                                    Approve & Lock Protocol
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <section id="layer6" class="workflow-section hidden">
+                <div class="max-w-5xl">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-2">🌐 Layer 6: Clinical Safety Network</h2>
+                        <p class="text-lg text-stone-600">This is not a traditional marketplace. It is a distributed safety infrastructure layer designed to maintain Human-in-the-Loop (HITL) integrity at scale by connecting AI triage directly to specialized, verified practitioners.</p>
+                    </div>
+
+                    <!-- Safety Framing Section -->
+                    <div class="bg-brand-900 text-white p-6 rounded-xl shadow-md mb-8">
+                        <h3 class="font-bold text-lg mb-2 flex items-center gap-2"><span>🛡️</span> Scaling HITL Integrity</h3>
+                        <p class="text-brand-100 text-sm leading-relaxed mb-4">To safely scale AI in clinical nutrition, absolute medical oversight must scale with it. The Clinical Network allows the AI's triage system to automatically route complex cases (or user-requested reviews) to a live network of practitioners based on specialty (e.g., matching a Crohn's patient to an IBD-certified RD). This ensures the "Human-in-the-Loop" is always available, accountable, and specialized.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                        <!-- Subscription Logic -->
+                        <div class="lg:col-span-1 space-y-4">
+                            <h3 class="font-bold text-stone-800 uppercase tracking-wider text-sm mb-4">Access Tiers</h3>
+                            
+                            <!-- Free Tier -->
+                            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-stone-100 text-stone-500 text-xs font-bold px-3 py-1 rounded-bl-lg">Current Plan</div>
+                                <h4 class="font-bold text-stone-900 text-lg mb-1">Standard Patient</h4>
+                                <p class="text-2xl font-bold text-stone-800 mb-4">$0<span class="text-sm font-normal text-stone-500">/mo</span></p>
+                                <ul class="text-sm text-stone-600 space-y-2 mb-4">
+                                    <li class="flex items-center gap-2"><span>✓</span> Standard AI Triage</li>
+                                    <li class="flex items-center gap-2"><span>✓</span> <strong class="text-stone-900" id="free-reviews-count">3</strong> Quick Approvals / month</li>
+                                    <li class="flex items-center gap-2 opacity-50"><span class="text-stone-400">✗</span> No Live Consultations</li>
+                                </ul>
+                                <div class="bg-stone-50 p-2 rounded text-center border border-stone-100">
+                                    <span class="text-xs font-bold text-stone-500 uppercase tracking-wider" id="free-reviews-status">3 Quick Reviews Remaining</span>
+                                </div>
+                            </div>
+
+                            <!-- Pro Tier -->
+                            <div class="bg-white p-5 rounded-xl border-2 border-brand-500 shadow-md relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">Recommended</div>
+                                <h4 class="font-bold text-brand-900 text-lg mb-1">Pro Care Plan</h4>
+                                <p class="text-2xl font-bold text-brand-700 mb-4">$49<span class="text-sm font-normal text-brand-600/70">/mo</span></p>
+                                <ul class="text-sm text-stone-600 space-y-2 mb-6">
+                                    <li class="flex items-center gap-2"><span>✓</span> Priority Case Routing</li>
+                                    <li class="flex items-center gap-2"><span>✓</span> Unlimited Quick Approvals</li>
+                                    <li class="flex items-center gap-2"><span>✓</span> Book Live Video Consults</li>
+                                </ul>
+                                <button class="w-full bg-brand-100 hover:bg-brand-200 text-brand-800 font-bold py-2 rounded-lg transition-colors text-sm">
+                                    Upgrade to Pro
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dietitian Directory -->
+                        <div class="lg:col-span-2">
+                            <h3 class="font-bold text-stone-800 uppercase tracking-wider text-sm mb-4">Verified Clinical Network</h3>
+                            <div class="space-y-4">
+                                
+                                <!-- RD Card 1 -->
+                                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center hover:border-brand-300 transition-colors">
+                                    <div class="flex items-start gap-4">
+                                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg flex-shrink-0">SJ</div>
+                                        <div>
+                                            <h4 class="font-bold text-stone-900 flex items-center gap-2">Dr. Sarah Jenkins, RD <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">Online</span></h4>
+                                            <p class="text-xs text-stone-500 mt-1 mb-2">Specialties: IBD, Gastrointestinal, Crohn's</p>
+                                            <div class="flex items-center gap-3 text-xs">
+                                                <span class="flex items-center gap-1 text-amber-500 font-bold">⭐ 4.9 <span class="text-stone-400 font-normal">(124)</span></span>
+                                                <span class="text-stone-400">|</span>
+                                                <span class="text-brand-600 font-medium">Next Slot: Today, 2:00 PM</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 w-full sm:w-auto">
+                                        <button class="quick-review-btn w-full sm:w-auto bg-stone-100 hover:bg-stone-200 text-stone-700 px-4 py-2 rounded text-xs font-bold transition-colors">
+                                            Request Quick Approval
+                                        </button>
+                                        <button class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                            <span>📹</span> Book 20-min Consult
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- RD Card 2 -->
+                                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center hover:border-brand-300 transition-colors">
+                                    <div class="flex items-start gap-4">
+                                        <div class="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-lg flex-shrink-0">MT</div>
+                                        <div>
+                                            <h4 class="font-bold text-stone-900 flex items-center gap-2">Marcus Thorne, RD <span class="bg-stone-100 text-stone-500 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">Offline</span></h4>
+                                            <p class="text-xs text-stone-500 mt-1 mb-2">Specialties: Hypertension, Sports Nutrition</p>
+                                            <div class="flex items-center gap-3 text-xs">
+                                                <span class="flex items-center gap-1 text-amber-500 font-bold">⭐ 4.8 <span class="text-stone-400 font-normal">(89)</span></span>
+                                                <span class="text-stone-400">|</span>
+                                                <span class="text-stone-600 font-medium">Next Slot: Tomorrow, 10:30 AM</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 w-full sm:w-auto">
+                                        <button class="quick-review-btn w-full sm:w-auto bg-stone-100 hover:bg-stone-200 text-stone-700 px-4 py-2 rounded text-xs font-bold transition-colors">
+                                            Request Quick Approval
+                                        </button>
+                                        <button class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                            <span>📹</span> Book 20-min Consult
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const app = {
+            currentLayer: 'layer1',
+            chartsInitialized: {
+                layer1: false,
+                layer4: false
+            },
+            charts: {},
+            
+            // Current recipe state for the email drafter
+            currentRecipeData: {
+                title: "Golden Gut-Soothing Chicken Congee",
+                suitability: "Uses thoroughly broken-down white rice and bone broth to provide highly digestible energy, while lean poached chicken provides protein for weight management satiety without the need for fibrous vegetables."
+            },
+
+            // Gemini API Utility
+            async callGemini(prompt, isJson = false) {
+                const apiKey = ""; // Runtime key
+                const model = "gemini-2.5-flash-preview-09-2025";
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: { 
+                        parts: [{ text: "You are Göbek, an expert clinical nutrition AI. Prioritize medical safety, pathology constraints, and user goals." }] 
+                    }
+                };
+
+                if (isJson) {
+                    payload.generationConfig = { 
+                        responseMimeType: "application/json" 
+                    };
+                }
+
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        
+                        const data = await response.json();
+                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (!text) throw new Error("No text in response");
+                        return isJson ? JSON.parse(text) : text;
+                    } catch (e) {
+                        if (i === 4) {
+                            alert("AI Request failed after multiple attempts. Please try again.");
+                            throw e;
+                        }
+                        await new Promise(r => setTimeout(r, delays[i]));
+                    }
+                }
+            },
+
+            init() {
+                // Initial setup
+                this.setupInteractions();
+                // Render initial charts
+                this.renderChartsForLayer('layer1');
+            },
+
+            navigateTo(layerId) {
+                // Update nav styling
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.remove('active', 'border-brand-600', 'bg-stone-100');
+                    el.classList.add('border-transparent', 'text-stone-600');
+                });
+                const activeNav = document.getElementById(`nav-${layerId}`);
+                activeNav.classList.add('active', 'bg-stone-100');
+                activeNav.classList.remove('border-transparent', 'text-stone-600');
+
+                // Hide all sections, show target
+                document.querySelectorAll('.workflow-section').forEach(el => {
+                    el.classList.add('hidden');
+                    el.classList.remove('block', 'fade-in');
+                });
+                
+                const targetSec = document.getElementById(layerId);
+                targetSec.classList.remove('hidden');
+                // Trigger reflow for animation
+                void targetSec.offsetWidth;
+                targetSec.classList.add('block', 'fade-in');
+
+                this.currentLayer = layerId;
+                this.renderChartsForLayer(layerId);
+                
+                // Scroll to top on mobile
+                if(window.innerWidth < 768) {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                }
+            },
+
+            renderChartsForLayer(layerId) {
+                Chart.defaults.font.family = "'Inter', sans-serif";
+                Chart.defaults.color = '#57534e'; // stone-600
+
+                if (layerId === 'layer1' && !this.chartsInitialized.layer1) {
+                    const ctx = document.getElementById('biomarkerChart').getContext('2d');
+                    this.charts.biomarker = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['hs-CRP (mg/L)', 'Vitamin D (ng/mL)'],
+                            datasets: [
+                                {
+                                    label: 'Patient Level',
+                                    data: [8.5, 18],
+                                    backgroundColor: ['#f43f5e', '#f59e0b'], // Rose for high, Amber for low
+                                    borderRadius: 4,
+                                    barPercentage: 0.6,
+                                    categoryPercentage: 0.8
+                                },
+                                {
+                                    label: 'Normal Target Range',
+                                    data: [3.0, 40], // Generic targets for visual representation
+                                    backgroundColor: '#e7e5e4', // Stone-200
+                                    borderRadius: 4,
+                                    barPercentage: 0.6,
+                                    categoryPercentage: 0.8
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } },
+                                tooltip: {
+                                    callbacks: {
+                                        afterLabel: function(context) {
+                                            if (context.dataIndex === 0 && context.datasetIndex === 0) return 'Status: HIGH (Inflammation)';
+                                            if (context.dataIndex === 1 && context.datasetIndex === 0) return 'Status: LOW (Deficiency)';
+                                            return 'Status: Target';
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#f5f5f4' } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                    this.chartsInitialized.layer1 = true;
+                }
+
+                if (layerId === 'layer4' && !this.chartsInitialized.layer4) {
+                    // Clinical Confidence Chart
+                    const ctxConf = document.getElementById('confidenceChart').getContext('2d');
+                    this.charts.confidence = new Chart(ctxConf, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Confidence', 'Risk/Uncertainty'],
+                            datasets: [{
+                                data: [94, 6],
+                                backgroundColor: ['#10b981', '#f5f5f4'], // Emerald-500, stone-100
+                                borderWidth: 0,
+                                cutout: '78%',
+                                borderRadius: 5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: { animateScale: true, animateRotate: true },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { enabled: false } 
+                            }
+                        }
+                    });
+
+                    // Data Completeness Chart
+                    const ctxComp = document.getElementById('completenessChart').getContext('2d');
+                    this.charts.completeness = new Chart(ctxComp, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Data Available', 'Data Missing'],
+                            datasets: [{
+                                data: [72, 28],
+                                backgroundColor: ['#f59e0b', '#f5f5f4'], // Amber-500, stone-100
+                                borderWidth: 0,
+                                cutout: '78%',
+                                borderRadius: 5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: { animateScale: true, animateRotate: true, delay: 200 }, // Slight delay for visual pop
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { enabled: false }
+                            }
+                        }
+                    });
+
+                    this.chartsInitialized.layer4 = true;
+                }
+            },
+
+            setupInteractions() {
+                // HITL Layer Approval Button Logic
+                const btn = document.getElementById('approveBtn');
+                const badge = document.getElementById('statusBadge');
+                const notes = document.getElementById('clinicianNotes');
+                let isApproved = false;
+
+                btn.addEventListener('click', () => {
+                    if (isApproved) return;
+                    
+                    // State change
+                    isApproved = true;
+                    
+                    // Update Button
+                    btn.innerHTML = '✅ Clinically Reviewed & Locked';
+                    btn.classList.remove('bg-brand-600', 'hover:bg-brand-700');
+                    btn.classList.add('bg-stone-300', 'text-stone-700', 'cursor-not-allowed', 'shadow-inner');
+                    btn.disabled = true;
+
+                    // Update Badge
+                    badge.innerHTML = '✅ Clinically Reviewed by [RD_Clinician_01]';
+                    badge.classList.remove('bg-brand-100', 'text-brand-800', 'border-brand-200');
+                    badge.classList.add('bg-emerald-100', 'text-emerald-800', 'border-emerald-200', 'shadow-sm');
+
+                    // Disable inputs
+                    notes.disabled = true;
+                    notes.classList.add('bg-stone-100', 'text-stone-500', 'cursor-not-allowed');
+                });
+
+                // Gemini Feature 1: Generate Recipe
+                const btnGenerateRecipe = document.getElementById('btn-generate-recipe');
+                const loadingOverlay = document.getElementById('recipe-loading');
+
+                btnGenerateRecipe.addEventListener('click', async () => {
+                    loadingOverlay.classList.remove('hidden');
+                    btnGenerateRecipe.disabled = true;
+
+                    const prompt = `
+                        Generate a new, alternative recipe for a patient with an active Crohn's flare and Hypertension, who also wants to lose weight.
+                        Available ingredients: Chicken breast, white rice, bone broth, carrots, spinach, olive oil, turmeric, ginger.
+                        Constraints:
+                        - MUST be low residue/fiber (<3g) for Crohn's. (No raw spinach, no raw carrots).
+                        - MUST be low sodium (<1500mg/day) for Hypertension.
+                        - Should be high protein for weight loss satiety.
+                        - Should include anti-inflammatory elements (turmeric/ginger).
+                        
+                        Return a JSON object with this exact structure:
+                        {
+                            "recipeName": "Creative Name",
+                            "description": "Short italic subtitle",
+                            "suitability": "1 sentence explaining why it fits the constraints",
+                            "conditionsAddressed": ["Condition: Reason", "Condition 2: Reason"],
+                            "riskNotes": ["Warning 1", "Warning 2"],
+                            "confidenceScore": 92,
+                            "saferAlternative": "1 sentence alternative tweak"
+                        }
+                    `;
+
+                    try {
+                        const result = await this.callGemini(prompt, true);
+                        
+                        // Update UI
+                        document.getElementById('recipe-label').innerText = "Generated Protocol • Alternative ✨";
+                        document.getElementById('recipe-title').innerText = result.recipeName;
+                        document.getElementById('recipe-desc').innerText = result.description;
+                        document.getElementById('recipe-suitability').innerText = result.suitability;
+                        
+                        document.getElementById('recipe-conditions').innerHTML = result.conditionsAddressed.map(c => `<li>${c}</li>`).join('');
+                        document.getElementById('recipe-risks').innerHTML = result.riskNotes.map(r => `<li>${r}</li>`).join('');
+                        document.getElementById('recipe-alt').innerHTML = `<strong>Safer Alternative:</strong> ${result.saferAlternative}`;
+                        
+                        // Update state for email drafter
+                        this.currentRecipeData = {
+                            title: result.recipeName,
+                            suitability: result.suitability
+                        };
+
+                        // Update Chart
+                        this.charts.confidence.data.datasets[0].data = [result.confidenceScore, 100 - result.confidenceScore];
+                        this.charts.confidence.update();
+                        document.getElementById('conf-val').innerText = `${result.confidenceScore}%`;
+
+                    } catch (e) {
+                        console.error("Failed to generate recipe", e);
+                    } finally {
+                        loadingOverlay.classList.add('hidden');
+                        btnGenerateRecipe.disabled = false;
+                    }
+                });
+
+                // Gemini Feature 2: Draft Email
+                const btnDraftEmail = document.getElementById('btn-draft-email');
+                const emailContainer = document.getElementById('email-draft-container');
+                const emailContent = document.getElementById('email-draft-content');
+
+                btnDraftEmail.addEventListener('click', async () => {
+                    const notesValue = document.getElementById('clinicianNotes').value || "Looks good to proceed.";
+                    const originalText = btnDraftEmail.innerHTML;
+                    
+                    btnDraftEmail.innerHTML = `<span class="animate-spin inline-block">⏳</span> Drafting...`;
+                    btnDraftEmail.disabled = true;
+
+                    const prompt = `
+                        Draft a friendly, empathetic email to a patient named Alex explaining their new nutrition protocol.
+                        Protocol Name: ${this.currentRecipeData.title}
+                        Why it works: ${this.currentRecipeData.suitability}
+                        Dietitian's Clinical Notes: "${notesValue}"
+                        
+                        Make it warm, easy to understand (remove medical jargon where possible), and reassuring about their Crohn's flare. Keep it under 3 paragraphs. Sign off as "Your Göbek Care Team".
+                    `;
+
+                    try {
+                        const result = await this.callGemini(prompt, false);
+                        emailContent.innerText = result;
+                        emailContainer.classList.remove('hidden');
+                    } catch (e) {
+                        console.error("Failed to draft email", e);
+                        emailContent.innerText = "Error drafting email. Please try again.";
+                        emailContainer.classList.remove('hidden');
+                    } finally {
+                        btnDraftEmail.innerHTML = originalText;
+                        btnDraftEmail.disabled = false;
+                    }
+                });
+
+                // Layer 6: Quick Review Limit Logic
+                const quickReviewBtns = document.querySelectorAll('.quick-review-btn');
+                const freeCountDisplay = document.getElementById('free-reviews-count');
+                const freeStatusDisplay = document.getElementById('free-reviews-status');
+                let freeReviewsRemaining = 3;
+
+                quickReviewBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        if (freeReviewsRemaining > 0) {
+                            freeReviewsRemaining--;
+                            freeCountDisplay.innerText = freeReviewsRemaining;
+                            freeStatusDisplay.innerText = `${freeReviewsRemaining} Quick Review${freeReviewsRemaining !== 1 ? 's' : ''} Remaining`;
+                            
+                            const originalText = e.target.innerText;
+                            e.target.innerText = "✓ Request Sent";
+                            e.target.classList.remove('bg-stone-100', 'hover:bg-stone-200', 'text-stone-700');
+                            e.target.classList.add('bg-emerald-100', 'text-emerald-800');
+                            e.target.disabled = true;
+
+                            if(freeReviewsRemaining === 0) {
+                                freeStatusDisplay.innerText = "0 Quick Reviews Remaining";
+                                freeStatusDisplay.classList.replace('text-stone-500', 'text-rose-500');
+                                freeStatusDisplay.parentElement.classList.replace('bg-stone-50', 'bg-rose-50');
+                                freeStatusDisplay.parentElement.classList.replace('border-stone-100', 'border-rose-200');
+                            }
+                        } else {
+                            alert("You have used all 3 free Quick Approvals for this month. Please upgrade to the Pro Care Plan to request more reviews.");
+                        }
+                    });
+                });
+            }
+        };
+
+        // Initialize application on load
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
